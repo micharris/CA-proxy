@@ -7,39 +7,52 @@ import re
 
 
 def response_SLA():
-    errorFlag = 0
-    totalErrors = 0
-    totalRequests = 0
+	errorFlag = 0
+	responseFlag = 0
+	totalErrors = 0
+	totalRequests = 0
 
-    with open("stats.log") as f:
-        for line in f:
-            if(re.search('Percentage of the requests.',line)):
-                 next(f) # skip 1 line
-                 next(f) # skip another line
-                 responseTimes = next(f).split()
-                
-            if(re.search('Total',line)):
-                totalRequests = line.split()
-                totalRequests = int(totalRequests[1])
+	with open("stats2.log") as f:
+		for line in f:
+			if(re.search('Percentage of the requests.',line)):
+				responseFlag = 1
+			 
+			if(responseFlag == 2 and re.search('-------------------.',line)):
+				responseFlag = 3
 
-            if(re.search('Error',line)):
-                errorFlag = 1
+			if(responseFlag == 1 and re.search('-------------------.',line)):
+				responseFlag = 2
 
-            if(errorFlag == 1):
-                errNumber = line.split()
-                if(errNumber[0].isdigit()):
-                	totalErrors += int(errNumber[0])
+			if(responseFlag == 2):
+				responseTimes = line.split()
+				try:
+					if(responseTimes[7].isdigit()):
+						if(int(responseTimes[7]) > 3000): #3 seconds is the max average response time per Alon
+							print "SLA response time exceeded for 90th percentile: "+responseTimes[0]+responseTimes[1]+" was "+responseTimes[7]+" ms"
+				except IndexError:
+					print ''
 
-            if(re.search('\n',line)):
-            	errorFlag = 0
-                            
-    for i in responseTimes:
-        if(i.isdigit()):
-            if(int(i) > 3000): #3 seconds is the max average response time per Alon
-                print "SLA response time exceeded."
+				
+			if(re.search('Total',line)):
+				totalRequests = line.split()
+				totalRequests = int(totalRequests[1])
 
-    if(totalRequests / totalErrors > .03): #no greater than 3% error rate
-        print "SLA error count exceeded.  % of errors is: "+(totalRequests / totalErrors)*100
+			if(re.search('Error',line)):
+				errorFlag = 1
+
+			if(errorFlag == 1):
+				errNumber = line.split()
+				if(errNumber[0].isdigit()):
+					totalErrors += int(errNumber[0])
+
+			if(re.search('\n',line)):
+				errorFlag = 0
+
+		try:
+				if(totalRequests / totalErrors > .03): #no greater than 3% error rate
+						print "SLA error count exceeded.  % of errors is: "+(totalRequests / totalErrors)*100
+		except:
+				print ''
 
 
 response_SLA()
